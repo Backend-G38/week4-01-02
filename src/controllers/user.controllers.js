@@ -1,6 +1,7 @@
 const catchError = require('../utils/catchError');
 const User = require('../models/User');
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 
 const getAll = catchError(async (req, res) => {
   const results = await User.findAll();
@@ -54,10 +55,41 @@ const update = catchError(async (req, res) => {
   return res.json(result[1][0]);
 });
 
+const login = catchError(async (req, res) => {
+  const { email, password } = req.body
+  //! vamos a buscar en nuestra db, al usuario asociado a este mail, en caso de no encontrarlo, daremos la vista -> (401): desutorizado
+
+  const user = await User.findOne({ where: { email } })
+  //findByPk -> id
+  if (!user) return res.status(401).json({ "message": "Las credenciales ingresadas son incorrectas" })
+
+  const isValid = await bcrypt.compare(password, user.password)
+  if (!isValid) return res.status(401).json({ "message": "Las credenciales ingresadas son incorrectas" })
+
+  const token = jwt.sign(
+    { user },
+    process.env.TOKEN_SECRET,
+    { expiresIn: '1d' }
+  )
+
+
+  return res.status(200).json({ user, token })
+})
+
+//HITS -> mail:password
+
 module.exports = {
   getAll,
   create,
   getOne,
   remove,
-  update
+  update,
+  login
 }
+
+
+
+
+
+
+
